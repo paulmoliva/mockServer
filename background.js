@@ -1,17 +1,33 @@
 chrome.runtime.onInstalled.addListener(function() {
-  let matcher = null;
+  let matchers = [];
   chrome.extension.onConnect.addListener(function(port) {
     console.log("Connected .....");
     port.onMessage.addListener(function(msg) {
-      matcher = msg;
+      // var bkg = chrome.extension.getBackgroundPage();
+      // bkg.console.log(msg);
+      if (msg.indexOf('$$$') > -1) {
+        const value = msg.split(' ')[1];
+        matchers = matchers.filter(val => val !== value)
+      }
+      else if (msg.indexOf('***give-matchers-please***') > -1) {
+        port.postMessage(JSON.stringify(matchers));
+      }
+      else if (msg.length) {
+        matchers.push(msg)
+      }
     });
   })
   chrome.webRequest.onBeforeRequest.addListener(function (details) {
     let path;
-    if (matcher && (matcher !== ''))
-      path = details.url.indexOf(matcher) >= 0 ? details.url.split('chick-fil-a.com/')[1] : null;
-    var bkg = chrome.extension.getBackgroundPage();
-    if (path) bkg.console.log(path, details);
+    const { url } = details;
+    if (matchers.length) {
+      var bkg = chrome.extension.getBackgroundPage();
+      bkg.console.log(path, details);
+      if (new RegExp(matchers.join("|")).test(url)) {
+        // At least one match
+        path = url.split('chick-fil-a.com/')[1];
+      }
+    }
     if (path && details.method !== 'OPTIONS') {
       return {
         redirectUrl: `http://localhost:5000/${path}` /*Redirection URL*/

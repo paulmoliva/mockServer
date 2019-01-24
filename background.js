@@ -1,19 +1,33 @@
 chrome.runtime.onInstalled.addListener(function() {
-  let matchers = [];
+  let matchers = {};
   chrome.extension.onConnect.addListener(function(port) {
     console.log("Connected .....");
     port.onMessage.addListener(function(msg) {
       // var bkg = chrome.extension.getBackgroundPage();
       // bkg.console.log(msg);
-      if (msg.indexOf('$$$') > -1) {
-        const value = msg.split(' ')[1];
-        matchers = matchers.filter(val => val !== value)
-      }
-      else if (msg.indexOf('***give-matchers-please***') > -1) {
-        port.postMessage(JSON.stringify(matchers));
-      }
-      else if (msg.length) {
-        matchers.push(msg)
+      const { type, key, payload } = msg;
+
+      switch (type) {
+        case 'removeMatcher': {
+          delete matchers[key];
+          return;
+        }
+        case 'fetchMatchers': {
+          port.postMessage(JSON.stringify(matchers));
+          return;
+        }
+        case 'addMatcher': {
+          matchers[key] = {
+            statusCode: 422,
+          };
+          return;
+        }
+        case 'updateStatusCode': {
+          matchers[key].statusCode = payload;
+          return;
+        }
+        default:
+          return;
       }
     });
   })
